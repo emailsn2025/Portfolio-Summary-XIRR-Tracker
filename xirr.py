@@ -65,8 +65,11 @@ def xirr(cashflows: Sequence[CashFlow], guess: float = 0.1) -> float | None:
     # Newton-Raphson with a bisection fallback for robustness.
     rate = guess
     for _ in range(100):
-        f = npv(rate)
-        fp = dnpv(rate)
+        try:
+            f = npv(rate)
+            fp = dnpv(rate)
+        except OverflowError:
+            break  # rate has wandered somewhere absurd - fall through to bisection
         if fp == 0:
             break
         new_rate = rate - f / fp
@@ -75,6 +78,8 @@ def xirr(cashflows: Sequence[CashFlow], guess: float = 0.1) -> float | None:
         rate = new_rate
         if rate <= -0.999:
             rate = -0.999
+        if rate > 1000:
+            break  # clearly diverging - let bisection take over
 
     # Fallback: bisection over a wide, sane range.
     lo, hi = -0.999, 10.0
