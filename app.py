@@ -361,6 +361,7 @@ with tab_connect:
     # ---- Manual CSV template ----
     with src_manual:
         st.markdown("For anything else - PMS accounts, funds outside Zerodha/Kuvera, manual entry.")
+        st.markdown("**Expected format** (this is a fixed example, not your data):")
         template = pd.DataFrame(
             {
                 "Date": ["2023-04-01", "2023-07-01", "2026-06-30"],
