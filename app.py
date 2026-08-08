@@ -380,6 +380,10 @@ with tab_connect:
                 st.error(str(e))
         if "manual" in st.session_state.txn_sources:
             st.caption(f"✅ {len(st.session_state.txn_sources['manual'])} rows loaded.")
+            st.dataframe(st.session_state.txn_sources["manual"], hide_index=True, width="stretch")
+            if st.button("🗑️ Clear manual CSV data", key="manual_clear"):
+                del st.session_state.txn_sources["manual"]
+                st.rerun()
 
     if st.session_state.txn_sources:
         st.markdown("---")
