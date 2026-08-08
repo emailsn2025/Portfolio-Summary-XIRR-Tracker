@@ -31,6 +31,11 @@ if "zerodha_session" not in st.session_state:
     st.session_state.zerodha_session = None
 if "zerodha_holdings" not in st.session_state:
     st.session_state.zerodha_holdings = None
+# Bumping these forces the matching file_uploader to remount as a brand-new
+# widget, which is the only way to make an uploader forget a previously
+# selected file - clearing session_state alone doesn't touch it.
+if "uploader_nonce" not in st.session_state:
+    st.session_state.uploader_nonce = {"zt": 0, "kv": 0, "manual": 0}
 
 
 # --------------------------------------------------------------------------
@@ -299,7 +304,8 @@ with tab_connect:
             "full holding period - they'll be combined."
         )
         zt_files = st.file_uploader(
-            "Upload Tradebook file(s)", type=["csv", "xlsx"], accept_multiple_files=True, key="zt_upload"
+            "Upload Tradebook file(s)", type=["csv", "xlsx"], accept_multiple_files=True,
+            key=f"zt_upload_{st.session_state.uploader_nonce['zt']}",
         )
         if zt_files and st.button("Add to XIRR data", key="zt_add"):
             try:
@@ -311,6 +317,10 @@ with tab_connect:
         if "zerodha_tradebook" in st.session_state.txn_sources:
             st.caption(f"✅ {len(st.session_state.txn_sources['zerodha_tradebook'])} trades loaded.")
             st.dataframe(st.session_state.txn_sources["zerodha_tradebook"], hide_index=True, width="stretch")
+            if st.button("🗑️ Clear Zerodha tradebook data", key="zt_clear"):
+                del st.session_state.txn_sources["zerodha_tradebook"]
+                st.session_state.uploader_nonce["zt"] += 1
+                st.rerun()
 
     # ---- Kuvera statement ----
     with src_kuvera:
@@ -323,7 +333,10 @@ with tab_connect:
             "appears in your current CAS - that's fine, its own buy/sell history is a "
             "complete cash-flow cycle on its own."
         )
-        kv_file = st.file_uploader("Upload Kuvera statement", type=["xlsx"], key="kv_upload")
+        kv_file = st.file_uploader(
+            "Upload Kuvera statement", type=["xlsx"],
+            key=f"kv_upload_{st.session_state.uploader_nonce['kv']}",
+        )
         if kv_file is not None:
             try:
                 kv_records = kuvera_import.load_statement(kv_file)
@@ -340,6 +353,10 @@ with tab_connect:
                     st.success(f"Added {len(txns)} transactions.")
         if "kuvera_statement" in st.session_state.txn_sources:
             st.caption(f"✅ {len(st.session_state.txn_sources['kuvera_statement'])} transactions loaded.")
+            if st.button("🗑️ Clear Kuvera data", key="kv_clear"):
+                del st.session_state.txn_sources["kuvera_statement"]
+                st.session_state.uploader_nonce["kv"] += 1
+                st.rerun()
 
     # ---- Manual CSV template ----
     with src_manual:
@@ -365,7 +382,10 @@ with tab_connect:
             file_name="transactions_template.csv",
             mime="text/csv",
         )
-        manual_file = st.file_uploader("Upload completed CSV", type=["csv"], key="manual_upload")
+        manual_file = st.file_uploader(
+            "Upload completed CSV", type=["csv"],
+            key=f"manual_upload_{st.session_state.uploader_nonce['manual']}",
+        )
         if manual_file is not None and st.button("Add to XIRR data", key="manual_add"):
             try:
                 manual_df = pd.read_csv(manual_file)
@@ -383,6 +403,7 @@ with tab_connect:
             st.dataframe(st.session_state.txn_sources["manual"], hide_index=True, width="stretch")
             if st.button("🗑️ Clear manual CSV data", key="manual_clear"):
                 del st.session_state.txn_sources["manual"]
+                st.session_state.uploader_nonce["manual"] += 1
                 st.rerun()
 
     if st.session_state.txn_sources:
@@ -392,6 +413,8 @@ with tab_connect:
         if st.button("🗑️ Clear all imported transaction data"):
             st.session_state.txn_sources = {}
             st.session_state.zerodha_holdings = None
+            for k in st.session_state.uploader_nonce:
+                st.session_state.uploader_nonce[k] += 1
             st.rerun()
 
 
